@@ -192,6 +192,6 @@ erDiagram
 ## Dashboard note
 - A snapshot of the Databricks pipeline and a price-comparison dashboard to demonstrate lineage and BI outcomes.
 
-![Price comparison dashboard](Dashboard.png)
+![Price comparison dashboard](dashboard.png)
 
 ![Databricks Lakeflow Pipeline](databricks_pipeline.png)
