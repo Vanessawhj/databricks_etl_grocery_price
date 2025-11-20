@@ -1,11 +1,11 @@
 """Bronze → Silver staging transforms with normalization and SCD2 staging."""
 
-import re
 from pyspark.sql.functions import lit, create_map
 from pyspark.sql import functions as F
 from pyspark.sql.functions import lit, coalesce, udf, col
 from pyspark.sql.types import StringType, FloatType, StructType, StructField
 from pyspark import pipelines as dp
+from pipeline.utilities.transform import normalize_name, parse_pack_size_and_pack
 
 
 catalog = 'workspace'
@@ -13,39 +13,6 @@ bronze_schema = '01_bronze'
 silver_schema = '02_silver'
 gold_schema = '03_gold'
 
-
-SIZE_RE = re.compile(r'(\d+(?:\.\d+)?)\s*(kg|g|l|ml)', re.I)
-PACK_RE = re.compile(r'(\d+)\s*(pack|pk|pkt|each)', re.I)
-
-
-def normalize_name(name: str) -> str:
-    name = re.sub(r"<br\s*/?>", " ", name, flags=re.I)  # strip HTML <br>
-    name = re.sub(r"\.{2,}", " ", name)        # turn "..." into a space
-    name = name.lower()
-    name = re.sub(r'[®™]', '', name)                  # remove symbols
-    name = re.sub(r'\s+', ' ', name)                  # collapse whitespace
-    name = re.sub(r':+\.?:*', ' ', name)   # replace any mix of ':' or '.' with space
-    name = re.sub(r'\s+', ' ', name).strip()  # collapse multiple spaces
-
-    return name
-
-def parse_pack_size_and_pack(name: str):
-
-    m = SIZE_RE.search(name)
-    n = PACK_RE.search(name)
-
-    if m:
-        qty = float(m.group(1))
-        unit = m.group(2).lower()
-        return qty, unit
-    elif n:
-        qty = float(n.group(1))
-        unit = n.group(2).lower()
-        return qty, unit
-    
-    else:
-        return None, None
-    
 
 COLES_CATEGORY_MAP = {
         "fruit & vegetables": "fruits_veg",

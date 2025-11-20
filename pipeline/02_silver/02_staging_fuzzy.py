@@ -52,7 +52,7 @@ def woolworths_match_stage():
         .join(category_dim, "category_name", "left")
         .withColumn("store_id", F.lit(1001))
         # .drop("ingestion_ts")
-        # .limit(1000)
+        # .limit(100)
     )
 
     candidate_pairs = canonical_df.select("brand_id", "category_id").distinct()

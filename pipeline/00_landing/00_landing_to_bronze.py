@@ -1,11 +1,11 @@
 """Landing (Auto Loader) to bronze ingestion for Coles and Woolworths."""
 
 import dlt
-from typing import List, Optional, Tuple
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F, types as T
 from pyspark.sql.functions import current_timestamp, col, sha2, concat_ws
-import re
+from pipeline.utilities.config import get_excluded_paths
+from pipeline.utilities.transform import parse_woolies_unit_price
 
 
 catalog = 'workspace'
@@ -17,31 +17,6 @@ gold_schema = '03_gold'
 concat_cols = concat_ws("||", *[col(column) for column in 
 ['Category', 'Name', 'DisplayName', 'Brand', 'Stockcode', 'Barcode', 'Price', 'WasPrice', 'SavingsAmount', 'Unit', 'CupPrice', 'InStock', 'IsOnSpecial', 'IsHalfPrice', 'Image', 'Description', 'URL', 'scrape_timestamp', 'batch_ts', 'scrape_run_id']
 ])
-
-UNIT_PRICE_PATTERN = re.compile(
-    r"""
-    ^\s*\$?(?P<unit_price>\d+(?:\.\d+)?)   # amount (e.g. 1.35, 50.15)
-    \s*/\s*
-    (?P<unit_qty>\d+(?:\.\d+)?)?           # optional quantity before the unit (100, 1)
-    (?P<unit_uom>[A-Za-z]+)                # unit letters (ML, G, EA, KG, L)
-    \s*$
-    """,
-    re.VERBOSE,
-)
-
-
-def get_excluded_paths(conf_key: str = "pipeline.excluded_paths") -> List[str]:
-    """
-    Return a list of paths to exclude, driven by a comma-separated Spark conf.
-    Example conf: pipeline.excluded_paths="s3://.../file1.csv,s3://.../file2.csv"
-    """
-    spark = SparkSession.getActiveSession()
-    if spark is None:
-        return []
-    raw = spark.conf.get(conf_key, "")
-    return [p.strip() for p in raw.split(",") if p.strip()]
-
-
 
 @dlt.table(
     name=f"{catalog}.{bronze_schema}.coles_product_raw",
@@ -75,19 +50,6 @@ def ingest_coles_data():
 
     return df
 
-
-
-def parse_woolies_unit_price(text: str) -> Optional[Tuple[float, float, str]]:
-    """Parse Woolworths unit price strings like '$1.50 / 100G' into numeric parts."""
-    if not text:
-        return None
-    match = UNIT_PRICE_PATTERN.search(text.strip())
-    if not match:
-        return None
-    price = float(match.group("unit_price"))
-    qty = float(match.group("unit_qty") or 1)
-    unit = match.group("unit_uom").lower()
-    return price, qty, unit
 
 
 parse_udf = F.udf(
